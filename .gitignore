@@ -12,6 +12,14 @@
 *.env
 env
 
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
