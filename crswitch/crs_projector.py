@@ -31,10 +31,10 @@ class CRSProjector:
             )
     
     def project_points(self, points: Iterable[Tuple[float, float]]) -> Iterable[Tuple[float, float]]:
-        return [self.transformer.transform(*point) for point in points]
+        return [self.transformer.transform(x, y) for (x, y) in points]
     
-    def project_point(self, point: Tuple[float, float]) -> Tuple[float, float]:
-        return self.transformer.transform(*point)
+    def project_point(self, x: float, y: float) -> Tuple[float, float]:
+        return self.transformer.transform(x, y)
     
     def project_polygon(self, polygon: Iterable[Tuple[float, float]], interpolation: Optional[int] = None, self_closing: bool = False) -> Iterable[Tuple[float, float]]:
         if interpolation: return self.project_points(interpolate_polygon(polygon, interpolation, self_closing))
