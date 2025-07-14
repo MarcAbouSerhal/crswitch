@@ -13,12 +13,12 @@ class CRSProjector:
     def __init__(self, crs_from: Any, crs_to: Any):
         try:
             crs_from, crs_to = CRS.from_user_input(crs_from), CRS.from_user_input(crs_to)
-            transformers = TransformerGroup(crs_from, crs_to, always_xy = True)
+            transformers = TransformerGroup(crs_from = crs_from, crs_to = crs_to, always_xy = True).transformers
 
-            if not transformers.has_transformers:
+            if not transformers:
                 raise CRSError("No transformer available.")
             
-            self.transformer: Transformer = transformers.best_available
+            self.transformer: Transformer = transformers[0]
             self.crs_from: CRS = crs_from
             self.crs_to: CRS = crs_to
         except:
@@ -30,13 +30,13 @@ class CRSProjector:
                 'CRS instance: CRS.from_epsg(4326)'
             )
     
-    def project_points(self, points: Iterable[Tuple[float, float]]) -> Iterable[Tuple[float, float], None, None]:
-        return [self.transformer.transform(point) for point in points]
+    def project_points(self, points: Iterable[Tuple[float, float]]) -> Iterable[Tuple[float, float]]:
+        return [self.transformer.transform(*point) for point in points]
     
     def project_point(self, point: Tuple[float, float]) -> Tuple[float, float]:
-        return self.transformer.transform(point)
+        return self.transformer.transform(*point)
     
-    def project_polygon(self, polygon: Iterable[Tuple[float, float]], interpolation: Optional[int] = None, self_closing: bool = False) -> Iterable[Tuple[float, float], None, None]:
+    def project_polygon(self, polygon: Iterable[Tuple[float, float]], interpolation: Optional[int] = None, self_closing: bool = False) -> Iterable[Tuple[float, float]]:
         if interpolation: return self.project_points(interpolate_polygon(polygon, interpolation, self_closing))
         return self.project_points(polygon)
     
