@@ -1,10 +1,10 @@
 from rasterio.transform import Affine
 
-from typing import Iterable, Tuple
+from typing import Union, Iterable, List, Tuple
 
 import numpy as np
 
-def interpolate_polygon(polygon: Iterable[Tuple[float, float]], interpolation: int = 4, self_closing: bool = False) -> Iterable[Tuple[float, float]]:
+def interpolate_polygon(polygon: Iterable[Union[Tuple[float, float], List[float]]], interpolation: int = 4, self_closing: bool = False) -> Iterable[Tuple[float, float]]:
     interpolated_polygon = []
     n = len(polygon) - int(self_closing)
     for idx in range(n):
@@ -18,14 +18,29 @@ def interpolate_polygon(polygon: Iterable[Tuple[float, float]], interpolation: i
     return interpolated_polygon
     
 def approximate_transform(points_from: Iterable[Tuple[float, float]], points_to: Iterable[Tuple[float, float]]) -> Affine:
-    '''
-    Finds the constants (a, b, c, d, e, f) of the affine transform that most closely maps points int points_from to points in points_to
-    By computing the least squares solution to the following equation:
-        | x_1 y_1 1 |   | a d |   | x'_1 y'_1 |
-        | x_2 y_2 1 | . | b e | = | x'_2 y'_2 |
-        | ......... |   | c f |   | ......... |
-            A       .    x    =       b
-    '''
+    """
+    Computes the affine transformation that best maps `points_from` to `points_to`
+    using a least squares approach
+
+    The function solves for the constants (a, b, c, d, e, f) in the affine transform: 
+
+        x′ = a * x + b * y + c
+        y′ = d * x + e * y + f
+
+    by minimizing the squares error in the matrix equation:
+
+        | x₁ y₁ 1 |       | a d |       | x′₁ y′₁ |
+        | x₂ y₂ 1 |   .   | b e |   ≈   | x′₂ y′₂ |
+        | ....... |       | c f |       | ....... |
+             A               x               B
+
+    Args:
+        points_from (Iterable[Tuple[float, float]]): List of source (x, y) points.
+        points_to (Iterable[Tuple[float, float]]): List of target (x', y') points.
+
+    Returns:
+        Affine: The best-fit affine transformation.
+    """
     A = np.array([[x, y, 1] for (x, y) in points_from])
     b = np.array([[x, y] for (x, y) in points_to])
     x, _, _, _ = np.linalg.lstsq(A, b, rcond = None)
