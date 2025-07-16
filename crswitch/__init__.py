@@ -1,2 +1,2 @@
-from .crs_projector import CRSProjector
-__all__ = ['CRSProjector']
+from .projector import Projector
+__all__ = ['Projector']

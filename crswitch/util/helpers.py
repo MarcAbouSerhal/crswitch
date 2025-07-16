@@ -17,7 +17,7 @@ def interpolate_polygon(polygon: Iterable[Union[Tuple[float, float], List[float]
     if self_closing: interpolated_polygon.append(polygon[0])
     return interpolated_polygon
     
-def approximate_transform(points_from: Iterable[Union[Tuple[float, float], List[float]]], points_to: Iterable[Union[Tuple[float, float], List[float]]]) -> Affine:
+def approximate_transform(points_from: Iterable[Union[Tuple[float, float], List[float]]], points_to: Iterable[Union[Tuple[float, float], List[float]]]) -> Tuple[float, float, float, float, float, float]:
     """
     Computes the affine transformation that best maps `points_from` to `points_to`
     using a least squares approach
@@ -39,12 +39,12 @@ def approximate_transform(points_from: Iterable[Union[Tuple[float, float], List[
         points_to (Iterable[Union[Tuple[float, float], List[float]]]): List of target (x', y') points.
 
     Returns:
-        Affine: The best-fit affine transformation.
+        Tuple[float, float, float, float, float, float]: Coefficients (a, b, c, d, e, f) of the best-fit affine transformation.
     """
     A = np.array([[x, y, 1] for x, y in points_from])
     b = np.array([[x, y] for x, y in points_to])
     x, _, _, _ = np.linalg.lstsq(A, b, rcond = None)
-    return Affine(x[0, 0], x[1, 0], x[2, 0], x[0, 1], x[1, 1], x[2, 1])
+    return (x[0, 0], x[1, 0], x[2, 0], x[0, 1], x[1, 1], x[2, 1])
 
 def generate_points(x_range: int, y_range: int, b: int = 3) -> Iterable[Tuple[float, float]]:
     '''

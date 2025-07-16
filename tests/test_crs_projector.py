@@ -1,4 +1,4 @@
-from crswitch import CRSProjector
+from crswitch import Projector
 from crswitch.util import generate_points
 from rasterio import Affine
 from math import sqrt
@@ -10,7 +10,7 @@ def test_project_transform():
     size = 2048
     transform = Affine(1.953125, 0.0, 3953800.0, 0.0, -1.953125, 4011000.0)
 
-    projector = CRSProjector(3857, 4326)
+    projector = Projector(3857, 4326)
     points = generate_points(size, size)
 
     new_transform = projector.project_transform_custom(transform, points)
