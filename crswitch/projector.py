@@ -27,10 +27,7 @@ class Projector:
         Args:
             crs_from (`Any`): Start CRS
             crs_to (`Any`): Destination CRS
-            teansformer (`Transformer`, optional): Projector's internal transformer 
-
-        Returns:
-            `Projector`: New `Projector` instance
+            transformer (`Transformer`, optional): Projector's internal transformer (if passed, `crs_from` and `crs_to` are ignored)
         '''
         if not transformer:
             try:
@@ -128,16 +125,23 @@ class Projector:
 
         Returns:
             `Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`: Projected Shapely object
+        
+        Raises:
+            `TypeError`: If type of Shapely object isn't one of: `Point`, `LineString`, `LinearRing`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, `GeometryCollection`
         """
         shapely_type = type(shapely_object)
         if shapely_type == Point: return Point(*self.project_point(shapely_object.x, shapely_object.y))
         elif shapely_type == LineString: return LineString(self.project_line(shapely_object.coords, interpolation))
         elif shapely_type == LinearRing: return LinearRing(self.project_polygon(shapely_object.coords, interpolation, True))
         elif shapely_type == Polygon: return Polygon(self.project_polygon(shapely_object.exterior.coords, interpolation, True), holes = [self.project_polygon(ring.coords, interpolation, True) for ring in shapely_object.interiors])
+        elif shapely_type == MultiPoint: return MultiPoint(self.project_points([(point.x, point.y) for point in shapely_object]))
+        elif shapely_type == MultiLineString: return MultiLineString([self.project_line(line.coords, interpolation) for line in shapely_object])
+        elif shapely_type in [MultiPolygon, GeometryCollection]: return shapely_type([self.project_shapely_object(internal_shapely_object, interpolation) for internal_shapely_object in shapely_object])
+        else: raise TypeError("Type of shapely object must be one of [Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]")
     
-    def project_geojson_object(self, geojson: dict, interpolation: Optional[int] = None) -> dict:
+    def project_geojson_object(self, geojson_object: dict, interpolation: Optional[int] = None) -> dict:
         """
-        Projects a GeoJSON object (`Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon` or `GeometryCollection`) 
+        Projects a GeoJSON object (`Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `GeometryCollection`) 
         from the start CRS to the destination CRS
 
         Args:
@@ -146,15 +150,19 @@ class Projector:
 
         Returns:
             `dict`: Projected GeoJSON object
+
+        Raises:
+            `TypeError`: If type of GeoJSON object isn't one of: `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `GeometryCollection`
         """
-        new_geojson = {k: copy.deepcopy(v) for k, v in geojson.items() if k not in ['coordinates', 'geometries']} # no need to deep copy the coordinates
-        geometry_type = geojson['type']
-        if geometry_type == 'Point': new_geojson['coordinates'] = list(self.project_point(*geojson['coordinates']))
-        elif geometry_type in ['MultiPoint', 'LineString']: new_geojson['coordinates'] = map(list, self.project_polygon(geojson['coordinates'], interpolation, True))
-        elif geometry_type in ['MultiLineString', 'Polygon']: new_geojson['coordinates'] = [map(list, self.project_polygon(shape, interpolation, True)) for shape in geojson['coordinates']]
-        elif geometry_type == 'MultiPolygon': new_geojson['coordinates'] = [[map(list, self.project_polygon(ring, interpolation, True)) for ring in polygon] for polygon in geojson['coordinates']]
-        elif geometry_type == 'GeometryCollection': new_geojson['geometries'] = [self.project_geojson_object(geojson_object, interpolation, True) for geojson_object in geojson['geometries']]
-        return new_geojson
+        new_geojson_object = {k: copy.deepcopy(v) for k, v in geojson_object.items() if k not in ['coordinates', 'geometries']} # no need to deep copy the coordinates
+        geojson_type = geojson_object['type']
+        if geojson_type == 'Point': new_geojson_object['coordinates'] = list(self.project_point(*geojson_object['coordinates']))
+        elif geojson_type in ['MultiPoint', 'LineString']: new_geojson_object['coordinates'] = list(map(list, self.project_polygon(geojson_object['coordinates'], interpolation, True)))
+        elif geojson_type in ['MultiLineString', 'Polygon']: new_geojson_object['coordinates'] = [list(map(list, self.project_polygon(shape, interpolation, True))) for shape in geojson_object['coordinates']]
+        elif geojson_type == 'MultiPolygon': new_geojson_object['coordinates'] = [[list(map(list, self.project_polygon(ring, interpolation, True))) for ring in polygon] for polygon in geojson_object['coordinates']]
+        elif geojson_type == 'GeometryCollection': new_geojson_object['geometries'] = [self.project_geojson_object(internal_geojson_object, interpolation) for internal_geojson_object in geojson_object['geometries']]
+        else: raise TypeError("Type of GeoJSON object must be one of [Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection]")
+        return new_geojson_object
 
     def project_tuple_transform(self, transform: Tuple[float, float, float, float, float ,float], points_from: Iterable[Union[Tuple[float, float], List[float]]]) -> Tuple[float, float, float, float, float, float]:
         """
@@ -200,7 +208,7 @@ class Projector:
         Computes the affine transformation that best maps points in `points_from` to coordinates in the destination CRS
         using a least squares approach
 
-        This function first projects points in `points_to` to the start CRS using `transform` and then to the destination CRS using `transformer`
+        This function first projects points in `points_from` to the start CRS using `transform` and then to the destination CRS using `transformer`
         and finally uses `approximate_transform` to find the best fitting transform
 
         Args:
