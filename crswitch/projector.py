@@ -2,7 +2,17 @@ from pyproj import CRS, Transformer
 from pyproj.transformer import TransformerGroup
 from pyproj.exceptions import CRSError
 from rasterio import Affine
-from shapely.geometry import Polygon
+from shapely.geometry import (
+    Point,
+    LineString,
+    LinearRing,
+    Polygon,
+    MultiPoint,
+    MultiLineString,
+    MultiPolygon,
+    GeometryCollection
+)
+
 
 from typing import Any, Optional, Union, Iterable, List, Tuple, Self
 import copy
@@ -86,35 +96,53 @@ class Projector:
 
         Args:
             polygon (`Iterable[Union[Tuple[float, float], List[float]]]`): Polygon in iterable format
-            interpolation (`int`, optional): Number of points projected per line
+            interpolation (`int`, optional): Number of points projected per segment
+            self_closing (`bool`, optional): Whether the polygon is self-closing i.e. `polygon[0] == polygon[-1]`
 
         Returns:
             `List[Tuple[float, float]]`: Projected polygon
         '''
         return self.project_points(interpolate_polygon(polygon, interpolation, self_closing)) if interpolation else self.project_points(polygon)
-    
-    def project_shapely_polygon(self, polygon: Polygon, interpolation: Optional[int] = None) -> Polygon:
-        """
-        Projects a Shapely `Polygon` instance from the start CRS to the destination CRS
+
+    def project_line(self, line: Iterable[Union[Tuple[float, float], List[float]]], interpolation: Optional[int] = None) -> List[Tuple[float, float]]:
+        '''
+        Projects a line in iterable format from the start CRS to the destination CRS
 
         Args:
-            polygon (`Polygon`): Shapely Polygon
-            interpolation (`int`, optional): Number of points projected per line
+            line (`Iterable[Union[Tuple[float, float], List[float]]]`): Polygon in iterable format
+            interpolation (`int`, optional): Number of points projected per segment
 
         Returns:
-            `Polygon`: Projected polygon
+            `List[Tuple[float, float]]`: Projected line
+        '''
+        return self.project_polygon(line, interpolation, True)
+
+    def project_shapely_object(self, shapely_object: Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection], interpolation: Optional[int] = None) -> Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]:
         """
-        outer_coords = self.project_polygon(polygon.exterior.coords, interpolation, True)
-        holes = [self.project_polygon(ring.coords, interpolation, True) for ring in polygon.interiors]
-        return Polygon(outer_coords, holes = holes)
+        Projects a Shapely object (`Point`, `LineString`, `LinearRing`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, `GeometryCollection`) 
+        from the start CRS to the destination CRS
+
+        Args:
+            shapely_object (`Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`): Shapely object
+            interpolation (`int`, optional): Number of points projected per line (ignored if type is `Point`)
+
+        Returns:
+            `Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`: Projected Shapely object
+        """
+        shapely_type = type(shapely_object)
+        if shapely_type == Point: return Point(*self.project_point(shapely_object.x, shapely_object.y))
+        elif shapely_type == LineString: return LineString(self.project_line(shapely_object.coords, interpolation))
+        elif shapely_type == LinearRing: return LinearRing(self.project_polygon(shapely_object.coords, interpolation, True))
+        elif shapely_type == Polygon: return Polygon(self.project_polygon(shapely_object.exterior.coords, interpolation, True), holes = [self.project_polygon(ring.coords, interpolation, True) for ring in shapely_object.interiors])
     
     def project_geojson_object(self, geojson: dict, interpolation: Optional[int] = None) -> dict:
         """
-        Projects a GeoJSON object (`Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon` or `GeometryCollection`) from the start CRS to the destination CRS
+        Projects a GeoJSON object (`Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon` or `GeometryCollection`) 
+        from the start CRS to the destination CRS
 
         Args:
             geojson (`dict`): GeoJSON object
-            interpolation (`int`, optional): Number of points projected per line (ignored if type if `Point`)
+            interpolation (`int`, optional): Number of points projected per line (ignored if type is `Point`)
 
         Returns:
             `dict`: Projected GeoJSON object
