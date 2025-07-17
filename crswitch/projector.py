@@ -20,14 +20,14 @@ import copy
 from .util.helpers import generate_points, approximate_transform, interpolate_polygon
 
 class Projector:
-    def __init__(self, crs_from: Any, crs_to: Any, transformer: Optional[Transformer] = None):
+    def __init__(self, crs_from: Any = None, crs_to: Any = None, transformer: Optional[Transformer] = None):
         '''
-        Creates `Projector` instance for transforming from `crs_from` to `crs_to`, or from an existing PyProj `Transformer` instance
+        Creates `Projector` instance for projecting from `crs_from` to `crs_to`, or using an existing PyProj `Transformer` instance
 
         Args:
-            crs_from (`Any`): Start CRS
-            crs_to (`Any`): Destination CRS
-            transformer (`Transformer`, optional): Projector's internal transformer (if passed, `crs_from` and `crs_to` are ignored)
+            `crs_from` (`Any`, optional): Start CRS
+            `crs_to` (`Any`, optional): Destination CRS
+            `transformer` (`Transformer`, optional): Projector's internal transformer (if passed, `crs_from` and `crs_to` are ignored)
         '''
         if not transformer:
             try:
@@ -49,25 +49,12 @@ class Projector:
         else:
             self.transformer: Transformer = transformer
     
-    @staticmethod
-    def from_transformer(transformer: Transformer) -> Self:
-        '''
-        Creates `Projector` instance from a PyProj `Transformer` instance
-
-        Args:
-            transformer (`Transformer`): Projector's internal transformer
-
-        Returns:
-            `Projector`: New `Projector` instance
-        '''
-        return Projector(None, None, transformer)
-    
     def project_points(self, points: Iterable[Union[Tuple[float, float], List[float]]]) -> List[Tuple[float, float]]:
         '''
         Projects a list of points from the start CRS to the destination CRS
         
         Args:
-            points (`Iterable[Union[Tuple[float, float], List[float]]]`): Points in the start CRS
+            `points` (`Iterable[Union[Tuple[float, float], List[float]]]`): Points in the start CRS
     
         Returns:
             `List[Tuple[float, float]]`: Projected list of points
@@ -79,8 +66,8 @@ class Projector:
         Projects a point (x, y) from the start CRS to the destination CRS
 
         Args:
-            x (`float`): x coordinate of the point in the start CRS
-            y (`float`): y coordinate of the point in the start CRS
+            `x` (`float`): x coordinate of the point in the start CRS
+            `y` (`float`): y coordinate of the point in the start CRS
         
         Returns:
             `Tuple[float, float]`: Projected point
@@ -92,9 +79,9 @@ class Projector:
         Projects a polygon in iterable format from the start CRS to the destination CRS
 
         Args:
-            polygon (`Iterable[Union[Tuple[float, float], List[float]]]`): Polygon in iterable format
-            interpolation (`int`, optional): Number of points projected per segment
-            self_closing (`bool`, optional): Whether the polygon is self-closing i.e. `polygon[0] == polygon[-1]`
+            `polygon` (`Iterable[Union[Tuple[float, float], List[float]]]`): Polygon in iterable format
+            `interpolation` (`int`, optional): Number of points projected per segment
+            `self_closing` (`bool`, optional): Whether the polygon is self-closing i.e. `polygon[0] == polygon[-1]`
 
         Returns:
             `List[Tuple[float, float]]`: Projected polygon
@@ -120,8 +107,8 @@ class Projector:
         from the start CRS to the destination CRS
 
         Args:
-            shapely_object (`Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`): Shapely object
-            interpolation (`int`, optional): Number of points projected per line (ignored if type is `Point`)
+            `shapely_object` (`Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`): Shapely object
+            `interpolation` (`int`, optional): Number of points projected per line (ignored if type is `Point`)
 
         Returns:
             `Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`: Projected Shapely object
@@ -145,8 +132,8 @@ class Projector:
         from the start CRS to the destination CRS
 
         Args:
-            geojson (`dict`): GeoJSON object
-            interpolation (`int`, optional): Number of points projected per line (ignored if type is `Point`)
+            `geojson_object` (`dict`): GeoJSON object
+            `interpolation` (`int`, optional): Number of points projected per line (ignored if type is `Point`)
 
         Returns:
             `dict`: Projected GeoJSON object
@@ -173,8 +160,8 @@ class Projector:
         and finally uses `approximate_transform` to find the best fitting transform
 
         Args:
-            transform (`Tuple[float, float, float, float, float ,float]`): Coefficients (a, b, c, d, e, f) of the affine geospatial transform that is being projected
-            points_from (`Iterable[Union[Tuple[float, float], List[float]]]`): Points of the grid for which the projected transform will best fit
+            `transform` (`Tuple[float, float, float, float, float ,float]`): Coefficients (a, b, c, d, e, f) of the affine geospatial transform that is being projected
+            `points_from` (`Iterable[Union[Tuple[float, float], List[float]]]`): Points of the grid for which the projected transform will best fit
         
         Returns:
             `Tuple[float, float, float, float, float ,float]`: Projected transform
@@ -193,10 +180,10 @@ class Projector:
         and finally uses `approximate_transform` to find the best fitting transform
 
         Args:
-            transform (`Tuple[float, float, float, float, float ,float]`): Coefficients (a, b, c, d, e, f) of the affine geospatial transform that is being projected
-            x_range (`int`): Possible x values on the grid (0-indexed)
-            y_range (`int`): Possible y values on the grid (0-indexed)
-            b (`int`, optional): Block size used to choose points
+            `transform` (`Tuple[float, float, float, float, float ,float]`): Coefficients (a, b, c, d, e, f) of the affine geospatial transform that is being projected
+            `x_range` (`int`): Possible x values on the grid (0-indexed)
+            `y_range` (`int`): Possible y values on the grid (0-indexed)
+            `b` (`int`, optional): Block size used to choose points
         
         Returns:
             `Tuple[float, float, float, float, float ,float]`: Projected transform
@@ -212,8 +199,8 @@ class Projector:
         and finally uses `approximate_transform` to find the best fitting transform
 
         Args:
-            transform (`Affine`): Affine geospatial transform that is being projected
-            points_from (`Iterable[Union[Tuple[float, float], List[float]]]`): Points of the grid for which the projected transform will best fit
+            `transform` (`Affine`): Affine geospatial transform that is being projected
+            `points_from` (`Iterable[Union[Tuple[float, float], List[float]]]`): Points of the grid for which the projected transform will best fit
         
         Returns:
             `Affine`: Projected transform
@@ -231,10 +218,10 @@ class Projector:
         and finally uses `approximate_transform` to find the best fitting transform
 
         Args:
-            transform (`Affine`): Affine geospatial transform that is being projected
-            x_range (`int`): Possible x values on the grid (0-indexed)
-            y_range (`int`): Possible y values on the grid (0-indexed)
-            b (`int`, optional): Block size used to choose points
+            `transform` (`Affine`): Affine geospatial transform that is being projected
+            `x_range` (`int`): Possible x values on the grid (0-indexed)
+            `y_range` (`int`): Possible y values on the grid (0-indexed)
+            `b` (`int`, optional): Block size used to choose points
         
         Returns:
             `Affine`: Projected transform
