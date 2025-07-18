@@ -2,25 +2,21 @@ from pyproj import CRS, Transformer
 from pyproj.transformer import TransformerGroup
 from pyproj.exceptions import CRSError
 from rasterio import Affine
-from shapely.geometry import (
-    Point,
-    LineString,
-    LinearRing,
-    Polygon,
-    MultiPoint,
-    MultiLineString,
-    MultiPolygon,
-    GeometryCollection
-)
+import shapely.geometry
 
 
-from typing import Any, Optional, Union, Iterable, List, Tuple, Self
+from typing import Any, Optional, Union, Iterable, List, Tuple
 import copy
 
 from .util.helpers import generate_points, approximate_transform, interpolate_polygon
 
 class Projector:
-    def __init__(self, crs_from: Any = None, crs_to: Any = None, transformer: Optional[Transformer] = None):
+    def __init__(
+        self, 
+        crs_from: Any = None,
+        crs_to: Any = None, 
+        transformer: Optional[Transformer] = None
+    ):
         '''
         Creates `Projector` instance for projecting from `crs_from` to `crs_to`, or using an existing PyProj `Transformer` instance
 
@@ -49,7 +45,10 @@ class Projector:
         else:
             self.transformer: Transformer = transformer
     
-    def project_points(self, points: Iterable[Union[Tuple[float, float], List[float]]]) -> List[Tuple[float, float]]:
+    def project_points(
+        self, 
+        points: Iterable[Union[Tuple[float, float], List[float]]]
+    ) -> List[Tuple[float, float]]:
         '''
         Projects a list of points from the start CRS to the destination CRS
         
@@ -61,7 +60,11 @@ class Projector:
         '''
         return [self.transformer.transform(x, y) for x, y in points]
     
-    def project_point(self, x: float, y: float) -> Tuple[float, float]:
+    def project_point(
+        self, 
+        x: float, 
+        y: float
+    ) -> Tuple[float, float]:
         '''
         Projects a point (x, y) from the start CRS to the destination CRS
 
@@ -74,7 +77,12 @@ class Projector:
         '''
         return self.transformer.transform(x, y)
     
-    def project_polygon(self, polygon: Iterable[Union[Tuple[float, float], List[float]]], interpolation: Optional[int] = None, self_closing: bool = False) -> List[Tuple[float, float]]:
+    def project_polygon(
+        self, 
+        polygon: Iterable[Union[Tuple[float, float], List[float]]], 
+        interpolation: Optional[int] = None, 
+        self_closing: bool = False
+    ) -> List[Tuple[float, float]]:
         '''
         Projects a polygon in iterable format from the start CRS to the destination CRS
 
@@ -101,32 +109,40 @@ class Projector:
         '''
         return self.project_polygon(line, interpolation, True)
 
-    def project_shapely_object(self, shapely_object: Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection], interpolation: Optional[int] = None) -> Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]:
+    def project_shapely_object(
+        self, 
+        shapely_object: Union[shapely.geometry.Point, shapely.geometry.LineString, shapely.geometry.LinearRing, shapely.geometry.Polygon, shapely.geometry.MultiPoint, shapely.geometry.MultiLineString, shapely.geometry.MultiPolygon, shapely.geometry.GeometryCollection], 
+        interpolation: Optional[int] = None
+    ) ->  Union[shapely.geometry.Point, shapely.geometry.LineString, shapely.geometry.LinearRing, shapely.geometry.Polygon, shapely.geometry.MultiPoint, shapely.geometry.MultiLineString, shapely.geometry.MultiPolygon, shapely.geometry.GeometryCollection]:
         """
         Projects a Shapely object (`Point`, `LineString`, `LinearRing`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, `GeometryCollection`) 
         from the start CRS to the destination CRS
 
         Args:
-            `shapely_object` (`Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`): Shapely object
+            `shapely_object` (`Union[shapely.geometry.Point, shapely.geometry.LineString, shapely.geometry.LinearRing, shapely.geometry.Polygon, shapely.geometry.MultiPoint, shapely.geometry.MultiLineString, shapely.geometry.MultiPolygon, shapely.geometry.GeometryCollection]`): Shapely object
             `interpolation` (`int`, optional): Number of points projected per line (ignored if type is `Point`)
 
         Returns:
-            `Union[Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]`: Projected Shapely object
+            `Union[shapely.geometry.Point, shapely.geometry.LineString, shapely.geometry.LinearRing, shapely.geometry.Polygon, shapely.geometry.MultiPoint, shapely.geometry.MultiLineString, shapely.geometry.MultiPolygon, shapely.geometry.GeometryCollection]`: Projected Shapely object
         
         Raises:
             `TypeError`: If type of Shapely object isn't one of: `Point`, `LineString`, `LinearRing`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, `GeometryCollection`
         """
         shapely_type = type(shapely_object)
-        if shapely_type == Point: return Point(*self.project_point(shapely_object.x, shapely_object.y))
-        elif shapely_type == LineString: return LineString(self.project_line(shapely_object.coords, interpolation))
-        elif shapely_type == LinearRing: return LinearRing(self.project_polygon(shapely_object.coords, interpolation, True))
-        elif shapely_type == Polygon: return Polygon(self.project_polygon(shapely_object.exterior.coords, interpolation, True), holes = [self.project_polygon(ring.coords, interpolation, True) for ring in shapely_object.interiors])
-        elif shapely_type == MultiPoint: return MultiPoint(self.project_points([(point.x, point.y) for point in shapely_object]))
-        elif shapely_type == MultiLineString: return MultiLineString([self.project_line(line.coords, interpolation) for line in shapely_object])
-        elif shapely_type in [MultiPolygon, GeometryCollection]: return shapely_type([self.project_shapely_object(internal_shapely_object, interpolation) for internal_shapely_object in shapely_object])
-        else: raise TypeError("Type of shapely object must be one of [Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]")
+        if shapely_type == shapely.geometry.Point: return shapely.geometry.Point(*self.project_point(shapely_object.x, shapely_object.y))
+        elif shapely_type == shapely.geometry.LineString: return shapely.geometry.LineString(self.project_line(shapely_object.coords, interpolation))
+        elif shapely_type == shapely.geometry.LinearRing: return shapely.geometry.LinearRing(self.project_polygon(shapely_object.coords, interpolation, True))
+        elif shapely_type == shapely.geometry.Polygon: return shapely.geometry.Polygon(self.project_polygon(shapely_object.exterior.coords, interpolation, True), holes = [self.project_polygon(ring.coords, interpolation, True) for ring in shapely_object.interiors])
+        elif shapely_type == shapely.geometry.MultiPoint: return shapely.geometry.MultiPoint(self.project_points([(point.x, point.y) for point in shapely_object]))
+        elif shapely_type == shapely.geometry.MultiLineString: return shapely.geometry.MultiLineString([self.project_line(line.coords, interpolation) for line in shapely_object])
+        elif shapely_type in [shapely.geometry.MultiPolygon, shapely.geometry.GeometryCollection]: return shapely_type([self.project_shapely_object(internal_shapely_object, interpolation) for internal_shapely_object in shapely_object])
+        else: raise TypeError("Type of Shapely object must be one of [Point, LineString, LinearRing, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection]")
     
-    def project_geojson_object(self, geojson_object: dict, interpolation: Optional[int] = None) -> dict:
+    def project_geojson_object(
+        self, 
+        geojson_object: dict, 
+        interpolation: Optional[int] = None
+    ) -> dict:
         """
         Projects a GeoJSON object (`Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `GeometryCollection`) 
         from the start CRS to the destination CRS
@@ -151,7 +167,11 @@ class Projector:
         else: raise TypeError("Type of GeoJSON object must be one of [Point, MultiPoint, LineString, MultiLineString, Polygon, MultiPolygon, GeometryCollection]")
         return new_geojson_object
 
-    def project_tuple_transform(self, transform: Tuple[float, float, float, float, float ,float], points_from: Iterable[Union[Tuple[float, float], List[float]]]) -> Tuple[float, float, float, float, float, float]:
+    def project_tuple_transform(
+        self, 
+        transform: Tuple[float, float, float, float, float ,float], 
+        points_from: Iterable[Union[Tuple[float, float], List[float]]]
+    ) -> Tuple[float, float, float, float, float, float]:
         """
         Computes the affine transformation that best maps points in `points_from` to coordinates in the destination CRS
         using a least squares approach
@@ -170,7 +190,13 @@ class Projector:
         points_to = self.project_points([(a * x + b * y + c, d * x + e * y + f) for x, y in points_from])
         return approximate_transform(points_from, points_to)
     
-    def project_tuple_transform_grid(self, transform: Tuple[float, float, float, float, float ,float], x_range: int, y_range: int, b: int = 3) -> Tuple[float, float, float, float, float ,float]:
+    def project_tuple_transform_grid(
+        self, 
+        transform: Tuple[float, float, float, float, float ,float], 
+        x_range: int,
+        y_range: int, 
+        b: int = 3
+    ) -> Tuple[float, float, float, float, float ,float]:
         """
         Computes the affine transformation that best maps points on the grid of size `x_range` * `y_range` to coordinates in the destination CRS
         using a least squares approach
@@ -190,7 +216,11 @@ class Projector:
         """
         return self.project_tuple_transform(transform, generate_points(x_range, y_range, b))
     
-    def project_affine_transform(self, transform: Affine, points_from: Iterable[Union[Tuple[float, float], List[float]]]) -> Affine:
+    def project_affine_transform(
+        self, 
+        transform: Affine, 
+        points_from: Iterable[Union[Tuple[float, float], List[float]]]
+    ) -> Affine:
         """
         Computes the affine transformation that best maps points in `points_from` to coordinates in the destination CRS
         using a least squares approach
@@ -208,7 +238,13 @@ class Projector:
         points_to = self.project_points([transform * (x, y) for x, y in points_from])
         return Affine(*approximate_transform(points_from, points_to))
     
-    def project_affine_transform_grid(self, transform: Affine, x_range: int, y_range: int, b: int = 3) -> Affine:
+    def project_affine_transform_grid(
+        self, 
+        transform: Affine, 
+        x_range: int, 
+        y_range: int,
+        b: int = 3
+    ) -> Affine:
         """
         Computes the affine transformation that best maps points on the grid of size `x_range` * `y_range` to coordinates in the destination CRS
         using a least squares approach
