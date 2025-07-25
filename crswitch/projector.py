@@ -43,6 +43,8 @@ class Projector:
                     'CRS instance: CRS.from_epsg(4326)'
                 )
         else:
+            assert isinstance(project_function, Callable), \
+                "Project function must take two float arguments and return a tuple of two floats."
             self._project_point: Callable[[float, float], Tuple[float, float]] = project_function
 
     @classmethod
@@ -86,8 +88,8 @@ class Projector:
         self,
         new_project_point: Callable[[float, float], Tuple[float, float]]
     ) -> None:
-        assert isinstance(new_project_point, Callable), \
-            "project_point must take two float arguments and return a tuple of two floats."
+        assert isinstance(project_function, Callable), \
+            "Project function must take two float arguments and return a tuple of two floats."
         self._project_point = new_project_point
     
     def project_points(
