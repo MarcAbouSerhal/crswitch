@@ -23,7 +23,7 @@ class Projector:
         Args:
             `crs_from` (`Any`, optional): Start CRS
             `crs_to` (`Any`, optional): Destination CRS
-            `project_point` (`Callable[[float, float], Tuple[float, float]]`, optional): Projector's internal project function (if passed, `crs_from` and `crs_to` are ignored)
+            `project_function` (`Callable[[float, float], Tuple[float, float]]`, optional): Projector's internal project function (if passed, `crs_from` and `crs_to` are ignored)
         '''
         if not project_function:
             try:
