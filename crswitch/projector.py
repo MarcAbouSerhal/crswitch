@@ -5,7 +5,7 @@ from rasterio import Affine
 import shapely.geometry
 
 
-from typing import Any, Optional, Union, Iterable, List, Tuple
+from typing import Any, Optional, Union, Iterable, List, Tuple, Callable
 import copy
 
 from .util.helpers import generate_points, approximate_transform, interpolate_polygon
@@ -15,17 +15,17 @@ class Projector:
         self, 
         crs_from: Any = None,
         crs_to: Any = None, 
-        transformer: Optional[Transformer] = None
+        project_function: Optional[Callable[[float, float], Tuple[float, float]]] = None
     ):
         '''
-        Creates `Projector` instance for projecting from `crs_from` to `crs_to`, or using an existing PyProj `Transformer` instance
+        Creates `Projector` instance for projecting from `crs_from` to `crs_to`, or using an existing 'project_point' function
 
         Args:
             `crs_from` (`Any`, optional): Start CRS
             `crs_to` (`Any`, optional): Destination CRS
-            `transformer` (`Transformer`, optional): Projector's internal transformer (if passed, `crs_from` and `crs_to` are ignored)
+            `project_point` (`Callable[[float, float], Tuple[float, float]]`, optional): Projector's internal project function (if passed, `crs_from` and `crs_to` are ignored)
         '''
-        if not transformer:
+        if not project_function:
             try:
                 crs_from, crs_to = CRS.from_user_input(crs_from), CRS.from_user_input(crs_to)
                 transformers = TransformerGroup(crs_from = crs_from, crs_to = crs_to, always_xy = True).transformers
@@ -33,7 +33,7 @@ class Projector:
                 if not transformers:
                     raise CRSError("No transformer available.")
                 
-                self.transformer: Transformer = transformers[0]
+                self._project_point: Callable[[float, float], Tuple[float, float]] = transformers[0].transform
             except:
                 raise CRSError(
                     'crs_from and crs_to must have valid CRS formats, for example:\n'
@@ -43,7 +43,52 @@ class Projector:
                     'CRS instance: CRS.from_epsg(4326)'
                 )
         else:
-            self.transformer: Transformer = transformer
+            self._project_point: Callable[[float, float], Tuple[float, float]] = project_function
+
+    @classmethod
+    def from_pyproj_transformer(
+        transformer: Transformer
+    ):
+        '''
+        Creates `Projector` instance using an existing PyProj `Transformer` instance
+
+        Args:
+            `transformer` (`Transformer`, optional): `Transformer` instance whose `transform` function will be used as Projector's internal project function
+
+        Returns:
+            `Projector`: `Projector` instance that uses `transformer.transform` as its internal project function
+        '''
+        return Projector(project_function = transformer.transform)
+    
+    @classmethod
+    def from_affine_transform(
+        transform: Affine
+    ):
+        '''
+        Creates `Projector` instance using an existing `Affine` transform
+
+        Args:
+            `transform` (`Affine`, optional): `Affine` transform will be used as Projector's internal project function
+
+        Returns:
+            `Projector`: `Projector` instance that uses `transform` as its internal project function
+        '''
+        return Projector(project_function = lambda x, y: transform * (x, y))
+
+    @property
+    def project_point(
+        self
+    ) -> Callable[[float, float], Tuple[float, float]]:
+        return self._project_point
+    
+    @project_point.setter
+    def project_point(
+        self,
+        new_project_point: Callable[[float, float], Tuple[float, float]]
+    ) -> None:
+        assert isinstance(new_project_point, Callable), \
+            "project_point must take two float arguments and return a tuple of two floats."
+        self._project_point = new_project_point
     
     def project_points(
         self, 
@@ -58,24 +103,7 @@ class Projector:
         Returns:
             `List[Tuple[float, float]]`: Projected list of points
         '''
-        return [self.transformer.transform(x, y) for x, y in points]
-    
-    def project_point(
-        self, 
-        x: float, 
-        y: float
-    ) -> Tuple[float, float]:
-        '''
-        Projects a point (x, y) from the start CRS to the destination CRS
-
-        Args:
-            `x` (`float`): x coordinate of the point in the start CRS
-            `y` (`float`): y coordinate of the point in the start CRS
-        
-        Returns:
-            `Tuple[float, float]`: Projected point
-        '''
-        return self.transformer.transform(x, y)
+        return [self._project_point(x, y) for x, y in points]
     
     def project_polygon(
         self, 
